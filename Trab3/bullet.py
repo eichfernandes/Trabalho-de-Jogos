@@ -1,7 +1,7 @@
 import pygame
 from abc import ABC, abstractmethod
-from util import colored_sprite, EventHandler
-
+from util import colored_sprite, EventHandler, scale_value
+import arena
 
 import math
 
@@ -26,36 +26,53 @@ def rotate(pos, angle, axis = (0,0)):
 
 class Bullet (ABC):
 
-    def __init__(self, pos, angle = 0, radius = 16, life_time = None):
-        self.pos = pos
+    def __init__(self, pos, angle=0, speed=400, radius=6, life_time=2,
+                 damage=0, color=(255, 255, 0), owner=None):
+        self.pos = pygame.Vector2(pos)
         self.origin = pygame.Vector2(pos)
         self.life_time = life_time
-        self.angle = angle
+        self.angle = angle          # graus
+        self.speed = speed          # pixels / segundo
         self.elapsed = 0
-        self.radius = radius
+        self.traveled = 0
+        self.radius = scale_value(radius)
+        self.damage = damage        # dano já sorteado (range definido em quem cria a bala)
+        self.owner = owner          # "player" ou "enemy", usado na checagem de colisão
+        self.alive = True
 
-        self.sprite = colored_sprite ((255, 0, 0), (self.radius*2, self.radius*2))
+        # ---- SPRITE: bolinha amarela representando o projétil ----
+        # TODO: trocar por sprite -> pygame.image.load("images/bullets/bullet.png").convert_alpha()
+        self.sprite = colored_sprite(color, (self.radius*2, self.radius*2))
 
     def update(self, dt):
-
         self.elapsed += dt
         if self.life_time and self.elapsed >= self.life_time:
-                self.destroy()       
+            self.destroy()
+            return
 
-        self.pos = rotate(self.move(), self.angle)+self.origin
+        old_pos = pygame.Vector2(self.pos)
+        self.traveled += self.speed * dt
+        self.pos = pygame.Vector2(rotate(self.move(), self.angle)) + self.origin
 
-    def draw(self, screen):
-        screen.blit(self.sprite, self.pos)
+        if not arena.line_clear(old_pos, self.pos):
+            self.destroy()  # bateu numa parede (portas são só um vão, então passam livre)
+
+    def draw(self, screen, offset=pygame.Vector2(0, 0)):
+        screen.blit(self.sprite, self.pos - offset - pygame.Vector2(self.radius, self.radius))
 
     @abstractmethod
     def move(self):
         pass
 
     def destroy(self): # pede para deletar
-        EventHandler().notify("DestroyObj", self) # avisa o mundo que saiu da tela
+        if self.alive:
+            self.alive = False
+            EventHandler().notify("DestroyObj", self) # avisa o mundo que saiu da tela
 
-class sinBullet (Bullet):
-    # exemplo, façam algo mais rebuscado
+
+class StraightBullet(Bullet):
+    # bala reta simples: anda em linha reta na direção "angle" a partir da origem.
+    # usada tanto pelo jogador (pistola/metralhadora/escopeta) quanto pelos inimigos.
 
     def move(self):
-        return pygame.Vector2(self.elapsed, math.sin(self.elapsed/50)*50) 
+        return pygame.Vector2(self.traveled, 0)
