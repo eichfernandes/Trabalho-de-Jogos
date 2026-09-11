@@ -1,5 +1,6 @@
 import pygame
 from abc import ABC, abstractmethod
+from util import colored_sprite
 
 class Player:
 
@@ -22,12 +23,6 @@ class Player:
     def change_state(self, new_state):
         self.state.delete()
         self.state = new_state(self)
-
-#função acessória
-def colored_sprite(color, size=(32, 32)):
-    sprite = pygame.Surface(size)
-    sprite.fill(color)
-    return sprite
 
 
 class PlayerState(ABC):
@@ -63,7 +58,7 @@ class ExampleState(PlayerState):
     # sprite = pygame.image.load("images/duck/base.png")
 
     # ALternativamente, use em retângulo
-    sprite = colored_sprite((255, 0, 0))
+    sprite = colored_sprite((0, 255, 0))
 
     def update(self, dt):
         pass  # faça sua implementação
